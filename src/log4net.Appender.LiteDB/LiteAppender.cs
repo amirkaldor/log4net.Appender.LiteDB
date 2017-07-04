@@ -74,22 +74,17 @@ namespace log4net.Appender.LiteDB
         private List<LiteAppenderParameter> parameters;
 
         /// <summary>
-        /// ConnectionString: Gets or sets the LiteDB database connection in the format:
+        /// Gets or sets the path to the file that logging will be written to.
+        /// </summary>
+        /// <value>The path to the file that logging will be written to.</value>
+        /// <remarks>
+        /// <para>
+        /// If the path is relative it is taken as relative from
+        /// the application base directory.
         /// Sample: C:\my-lite-logs.db
-        /// If no database specified, default to "log4net"
-        /// </summary>
-        public string ConnectionString { get; set; }
-
-        /// <summary>
-        /// ConnectionString: Gets or sets the connectionString name to use in the connectionStrings section of the *.config file
-        /// If not specified or connectionString name does not exist will use ConnectionString value
-        /// </summary>
-        public string ConnectionStringName { get; set; }
-
-        /// <summary>
-        /// ConnectionString: The appSettings key from App.Config that contains the connection string.
-        /// </summary>
-        public string AppSettingsKey { get; set; }
+        /// </para>
+        /// </remarks>
+        public virtual string File { get; set; }
 
         /// <summary>
         /// Gets or sets the name of the collection in the database. Defaults to "logs"
@@ -184,67 +179,15 @@ namespace log4net.Appender.LiteDB
         }
 
         /// <summary>
-        /// Gets the connection string by name or by using the connection string property if unavailable.
-        /// </summary>
-        /// <returns>The connection string</returns>
-        protected virtual string GetConnectionString()
-        {
-            var connectionStringSetting = ConfigurationManager.ConnectionStrings[ConnectionStringName];
-            return connectionStringSetting != null ? connectionStringSetting.ConnectionString : ConnectionString;
-        }
-
-        /// <summary>
         /// Gets the Mongo database based on the connection string. IF the database name isn't 
         /// present in the connection string it defaults to 'log4net'.
         /// </summary>
         /// <returns>The Mongo database</returns>
         protected virtual LiteDatabase CreateDatabaseConnection()
         {
-            var connectionString = GetConnectionString();
-            var db = new LiteDatabase(connectionString);
+            var fullPath = SystemInfo.ConvertToFullPath(this.File);
+            var db = new LiteDatabase(fullPath);
             return db;
-        }
-
-        /// <summary>
-        /// Resolves the connection string from the ConnectionString, ConnectionStringName, or AppSettingsKey
-        /// property.
-        /// </summary>
-        /// <remarks>
-        /// ConnectiongStringName is only supported on .NET 2.0 and higher.
-        /// </remarks>
-        /// <param name="connectionStringContext">Additional information describing the connection string.</param>
-        /// <returns>A connection string used to connect to the database.</returns>
-        protected virtual string ResolveConnectionString(out string connectionStringContext)
-        {
-            if (!string.IsNullOrEmpty(this.ConnectionString))
-            {
-                connectionStringContext = "ConnectionString";
-                return this.ConnectionString;
-            }
-
-            if (!string.IsNullOrEmpty(this.ConnectionStringName))
-            {
-                var connectionStringSettings = ConfigurationManager.ConnectionStrings[this.ConnectionStringName];
-                if (connectionStringSettings == null)
-                    throw new LogException("Unable to find [" + this.ConnectionStringName + "] ConfigurationManager.ConnectionStrings item");
-                connectionStringContext = "ConnectionStringName";
-                return connectionStringSettings.ConnectionString;
-            }
-
-            if (!string.IsNullOrEmpty(this.AppSettingsKey))
-            {
-                connectionStringContext = "AppSettingsKey";
-                var appSetting = log4net.Util.SystemInfo.GetAppSetting(this.AppSettingsKey);
-                if (string.IsNullOrEmpty(appSetting))
-                {
-                    throw new LogException("Unable to find [" + this.AppSettingsKey + "] AppSettings key.");
-                }
-
-                return appSetting;
-            }
-
-            connectionStringContext = "Unable to resolve connection string from ConnectionString, ConnectionStrings, or AppSettings.";
-            return string.Empty;
         }
 
         /// <summary>
@@ -270,7 +213,7 @@ namespace log4net.Appender.LiteDB
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine(ex.ToString());
+                    this.ErrorHandler.Error("Exception while build bson document", ex);
                 }
             }
 
@@ -280,17 +223,14 @@ namespace log4net.Appender.LiteDB
         /// <summary>Connects to the database.</summary>
         private void InitializeDatabaseConnection()
         {
-            var connectionStringContext = "Unable to determine connection string context.";
-            var connectionString = string.Empty;
             try
             {
                 DiposeConnection();
-                connectionString = ResolveConnectionString(out connectionStringContext);
                 databaseConnection = CreateDatabaseConnection();
             }
             catch (Exception ex)
             {
-                this.ErrorHandler.Error("Could not open database connection [" + connectionString + "]. Connection string context [" + connectionStringContext + "].", ex);
+                this.ErrorHandler.Error("Could not open lite database file [" + this.File + "].", ex);
                 databaseConnection = (LiteDatabase)null;
             }
         }
