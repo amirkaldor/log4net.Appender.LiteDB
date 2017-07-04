@@ -7,9 +7,9 @@ A log4net appender for LiteDB (http://www.litedb.org/)
 Built with Visual Studio 2013, .Net framework 4.0
 
 ### General explaination:
-You can use this appender to write 
+You can use this appender to write logs to LiteDB.
 
-### Configuration sample, to write info to MSMQ:
+### Configuration sample:
 ```xml
 <appender name="LiteDbAppender" type="log4net.Appender.LiteDB.LiteAppender, log4net.Appender.LiteDB">
   <connectionString value="Logs\sample-logs.db"/>
@@ -52,5 +52,4 @@ You can use this appender to write
 ```
 
 ## License
-
 https://github.com/fanyangxi/log4net.Appender.LiteDB/blob/master/LICENSE
